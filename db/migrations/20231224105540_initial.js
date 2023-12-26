@@ -1,36 +1,14 @@
 const tableNames = require("../../src/constants/tableNames");
+const {
+  addDefaultColumns,
+  createNameTable,
+  references,
+  url,
+  email,
+} = require("../../src/lib/tableUtils");
 /**
  * @param {import('knex')} knex
  */
-
-function addDefaultColumns(table) {
-  table.timestamps(false, true);
-  table.datetime("deleted_at");
-}
-function createNameTable(knex, table_name) {
-  return knex.schema.createTable(table_name, (table) => {
-    table.increments().notNullable();
-    table.string("name", 254).notNullable().unique();
-    addDefaultColumns(table);
-  });
-}
-
-function references(table, tableName) {
-  table
-    .integer(`${tableName}_id`)
-    .unsigned()
-    .references("id")
-    .inTable(tableName)
-    .onDelete("cascade");
-}
-
-function url(table, columnName) {
-  table.string(columnName, 2000);
-}
-
-function email(table, columnName) {
-  return table.string(columnName, 254);
-}
 
 exports.up = async (knex) => {
   await Promise.all([
@@ -41,15 +19,24 @@ exports.up = async (knex) => {
       table.string("name", 254).notNullable();
       table.string("password").notNullable();
       table.datetime("last_login");
-
       addDefaultColumns(table);
     }),
     //Create item_type table
     createNameTable(knex, tableNames.item_type),
-    //Create state table
-    createNameTable(knex, tableNames.state),
     //Create country table
-    createNameTable(knex, tableNames.country),
+    knex.schema.createTable(tableNames.country, (table) => {
+      table.increments().notNullable();
+      table.string("name").notNullable().unique();
+      table.string("code").unique();
+      addDefaultColumns(table);
+    }),
+    knex.schema.createTable(tableNames.state, (table) => {
+      table.increments().notNullable();
+      table.string("name").notNullable().unique();
+      table.string("code").unique();
+      references(table, tableNames.country);
+      addDefaultColumns(table);
+    }),
     //Create shape table
     createNameTable(knex, tableNames.shape),
     //Create location table
@@ -71,7 +58,6 @@ exports.up = async (knex) => {
     table.float("latitude").notNullable();
     table.float("longitude").notNullable();
     references(table, tableNames.state);
-    references(table, tableNames.country);
     addDefaultColumns(table);
   });
 
@@ -89,6 +75,9 @@ exports.up = async (knex) => {
   });
 };
 
+/**
+ * @param {import('knex')} knex
+ */
 exports.down = async (knex) => {
   await Promise.all(
     [
@@ -96,8 +85,8 @@ exports.down = async (knex) => {
       tableNames.address,
       tableNames.user,
       tableNames.item_type,
-      tableNames.country,
       tableNames.state,
+      tableNames.country,
       tableNames.shape,
       tableNames.location,
     ].map((tableName) => knex.schema.dropTable(tableName))
