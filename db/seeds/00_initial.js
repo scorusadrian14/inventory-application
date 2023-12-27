@@ -1,37 +1,47 @@
-/**
- * @param { import("knex").Knex } knex
- * @returns { Promise<void> }
- */
-
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
-const orderedTableNames = require("../../src/constants/orderedTableNames");
+
+const logger = require("../../src/lib/logger");
 const tableNames = require("../../src/constants/tableNames");
 const countries = require("../../src/constants/countries");
+const us_states = require("../../src/constants/us_states");
 
+/**
+ * @param {import('knex')} knex
+ */
 exports.seed = async (knex) => {
-  await orderedTableNames.reduce(async (promise, table_name) => {
-    await promise;
-    console.log("clearing", table_name);
-    return knex(table_name).del();
-  }, Promise.resolve());
+  await Promise.all(Object.keys(tableNames).map((name) => knex(name).del()));
 
-  const password = crypto.randomBytes(15).toString("hex");
+  const password = `A${crypto.randomBytes(15).toString("hex")}?`;
+
   const user = {
-    email: "adrianscorus14@gmail.com",
-    name: "Adrian",
+    email: "cj@null.computer",
+    name: "CJ",
     password: await bcrypt.hash(password, 12),
   };
 
   const [createdUser] = await knex(tableNames.user).insert(user).returning("*");
-  console.log(
-    "user created:",
-    {
-      password,
-    },
-    createdUser
+
+  if (process.env.NODE_ENV !== "test") {
+    logger.info(
+      "User created:",
+      {
+        password,
+      },
+      createdUser
+    );
+  }
+
+  const insertedCountries = await knex(tableNames.country).insert(
+    countries,
+    "*"
   );
 
-  await knex(tableNames.country).insert(countries);
-  await knex(tableNames.state).insert([{ name: "CO" }]);
+  const usa = insertedCountries.find((country) => country.code === "US");
+
+  us_states.forEach((state) => {
+    state.country_id = usa.id;
+  });
+
+  await knex(tableNames.state).insert(us_states);
 };

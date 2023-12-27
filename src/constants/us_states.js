@@ -3,15 +3,15 @@ const path = require("path");
 const Papa = require("papaparse");
 
 const csvData = fs.readFileSync(
-  path.join(__dirname, "..", "..", "db", "sources", "countries.csv"),
+  path.join(__dirname, "..", "..", "db", "sources", "us_states.csv"),
   "utf8"
 );
 
-const countries = Papa.parse(csvData, {
+const states = Papa.parse(csvData, {
   header: true,
 });
 
-module.exports = countries.data.map(({ name, "alpha-2": code }) => ({
+module.exports = states.data.map(({ state: name, code }) => ({
   name,
   code,
 }));
